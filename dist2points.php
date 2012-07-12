@@ -1,6 +1,5 @@
 <?php
-
-define('BCMATH_PRECISION', 50);
+include_once('./common.php');
 
 function getDistance($latitude1, $longitude1, $latitude2, $longitude2) {  
     $earth_radius = 6371.8; # FIXME not precise 
@@ -20,34 +19,4 @@ function getDistance($latitude1, $longitude1, $latitude2, $longitude2) {
     return $d;
  }
 
-#wrapper functions for bcmath operations; appending BCMATH_PRECISION to operand-list
-function ppow($op1, $op2){
-  #return pow($op1,$op2);
-  return bcpow(xpnd($op1),xpnd($op2),BCMATH_PRECISION);
-}
-function pmul($op1, $op2){
-  #return ($op1*$op2);
-  return bcmul(xpnd($op1),xpnd($op2),BCMATH_PRECISION);
-}
-function padd($op1,$op2){
-  #return $op1+$op2;
-  return bcadd(xpnd($op1),xpnd($op2),BCMATH_PRECISION);
-}
-function pdiv($op1,$op2){
-	#return $op1/$op2;
-  
-		$op1 = xpnd($op1);
-		$op2 = xpnd($op2);
-	/*  echo $op1."\n";
-	  echo $op2."\n";*/
-  return bcdiv($op1,$op2,BCMATH_PRECISION);
-}
-
-# convert output of used php-math functions like sin in scientific notation to decimal notation
-function xpnd($scientific){ # expand from scientific notation
-  if(is_int($scientific)){ #don't convert integers
-	return $scientific; 
-  }
-  return sprintf("%.".BCMATH_PRECISION."F", $scientific);
-}
 ?>

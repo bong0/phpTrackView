@@ -2,7 +2,8 @@
 # Tested with PHP v5.4.4
 error_reporting(E_ALL);
 
-include_once("dist2points.php"); 
+include_once("dist2points.php");
+include_once('common.php');
 
 # TODO
 # hoehenmeter
@@ -10,8 +11,6 @@ include_once("dist2points.php");
 class GpxParser {
   private $indentLevel; # to do proper output indentation
   private $state; # holds state of parser, location in document
-  private $locationCache; #holds the two last locations processed
-  private $distance; #holds the cumulated distance between the waypoints of a track segment
   private $timezone; #the timezone in format "Region/Capital"
   private $xmlp; #the underlying xml parser
   private $inputFile; #holds fd to input file
@@ -19,6 +18,17 @@ class GpxParser {
   private $debug; #flag if debugging is enabled
   private $minify; #flag is minified output is on (yes by default)
 
+  # containers for data used by speed, distance and elevation gain/loss
+  private $locationCache; #holds the two last locations processed
+  private $distanceDelta; # holds the delta of the last two trackpoints in km
+  private $distance; #holds the cumulated distance between the waypoints of a track segment
+  private $elevationCache; #holds the last two elevation values
+  private $elevationGain; #holds the cumulated elevation gain in meters
+  private $elevationLoss; #holds the cumulated elevation loss in meters
+  private $timeCache; # holds the timestamps of the last two trackpoints in seconds
+  private $trackPointsProcessed; #number of processed trackpoints (for averaging calcs)
+  private $cumulatedSpeed; #an addition of all speeds in one track-segment
+  
   public function __construct($inputFile=null,$debugging=0){
 	if($debugging) $this->debug=1;
 	else $this->debug=0;
@@ -26,6 +36,14 @@ class GpxParser {
 	$this->indentLevel = 0;
 	$this->state = new ParserState();
 	$this->locationCache = array( new Location(), new Location() );
+	$this->distanceDelta = 0;
+	$this->distance = 0;
+	$this->elevationCache = new DiffCache();
+	$this->elevationGain =
+	$this->elevationLoss = 0;
+	$this->timeCache = new DiffCache();
+	$this->trackPointsProcessed = 0;
+	$this->cumulatedSpeed = 0;
 	$this->timezone = "Europe/Berlin"; #!!! needs to be read from wordpress api TODO
 	date_default_timezone_set($this->timezone); #set timezone
 	$this->xmlp = xml_parser_create(); #construct xmlparser
@@ -104,7 +122,7 @@ class GpxParser {
 
   function onEndTag($parser, $name) {
 	if($name === "TRK") $this->trackEnd(); # close track, finish parsing
-	else if($name === "TRKSEG") $this->trackSegmentEnd(); #close track segmend
+	else if($name === "TRKSEG") $this->trackSegmentEnd(); #close track segment
 	else if($name === "TRKPT") $this->end_newPoint(); # end point
 	#all other closing functions are omitted, we unset the $in_* flags after having read the >data<
   }
@@ -145,6 +163,7 @@ class GpxParser {
 	$this->distance = 0; #reset distance
   }
   private function trackSegmentEnd(){
+	$this->put_avgSpeed();
 	$this->closeArray();
   }
 
@@ -152,10 +171,13 @@ class GpxParser {
   private function begin_newPoint() { $this->openArray(); } # open new array
   private function end_newPoint() {
 	  if($this->locationCache[1]->getLatitude()){ # calculate distance as soon as we have parsed > 1 waypoint
-		  $this->distance += $this->locationCache[1]->getDistToPoint($this->locationCache[0]);
+		  $this->distanceDelta = $this->locationCache[1]->getDistToPoint($this->locationCache[0]);
+		  $this->distance += $this->distanceDelta;
 	  }
 	  $this->put_dist($this->distance);
+	  $this->put_speed();
 
+	  $this->trackPointsProcessed++;
 	  $this->closeArray(); # close array
 	}
 
@@ -177,9 +199,11 @@ class GpxParser {
 	  $this->state->in_time=1;
 	  return;
 	}
+	$timestamp = strtotime($data);
 
 	$this->indent();
-	$this->printOut("'ts' => '".strtotime($data)."',\n");
+	$this->printOut("'ts' => '".$timestamp."',\n");
+	$this->timeCache->push($timestamp); #save to cache
 
 	$this->state->in_time=0; #reset flag
 	return;
@@ -221,6 +245,15 @@ class GpxParser {
 	$this->indent();
 	$this->printOut("'ele' => '".$data."',\n");
 
+	$this->elevationCache->push($data); #save to cache
+	$elevationDiff = $this->elevationCache->getDiff();
+	if($elevationDiff>=0){
+	  $this->elevationGain += $elevationDiff;
+	}
+	else {
+	   $this->elevationLoss += $elevationDiff;
+	}
+
 	$this->state->in_ele=0; #reset flag
 	return;
   }
@@ -252,11 +285,30 @@ class GpxParser {
   private function put_dist($data){
 	$this->indent();
 	$this->printOut("'dist' => '".xpnd($data)."',\n");
+
 	if($data > 0){ #make sure we have a distance != 0, only then we can shift
 	  #move index [1] to [0] => like a shift register | use shift? FIXME
 	  $this->locationCache[0] = $this->locationCache[1];
 	  $this->locationCache[1] = new Location();
 	}
+  }
+
+  private function put_speed(){
+	$this->indent();
+	$speed = 0; #in km/h
+
+	if($this->distance > 0){
+	  $timeDelta = pdiv($this->timeCache->getDiff(), 3600); # in hours
+	#  echo $timeDelta."\n";
+	#  echo $this->distanceDelta."\n";
+	  $speed = pdiv($this->distanceDelta, $timeDelta);
+	}
+	$this->printOut("'spd' => '".xpnd($speed)."',\n");
+	$this->cumulatedSpeed += xpnd($speed);
+  }
+
+  private function put_avgSpeed(){
+	 $this->printOut("'avgSpd' => '".pdiv($this->cumulatedSpeed, $this->trackPointsProcessed)."',\n");
   }
 
   function onData($parser, $data){
@@ -316,4 +368,54 @@ class Location {
   
 }
 
+class DiffCache {
+  private $valCache;
+  private $default_val; # default value for initialization of array elements
+  private $default_needs_init; # flag indicating wether the default value needs allocation via "new"
+  private $diff;
+
+  public function __construct($default=0){ #1st parameter specifies the value which will be used to initialize the array's elements 
+	$this->valCache = array( $default, $default );
+	$this->default_val = $default;
+	$this->default_needs_init = class_exists($this->default_val); #check wether default_val is a valid class
+	$this->diff = 0;
+  }
+  public function push($value){
+	if(!$this->valCache[0]){ # first entry in array
+	  $this->valCache[0] = $value;
+	}
+	else if($this->valCache[1]){ # we need to shift left
+
+	  $this->valCache[0] = $this->valCache[1];
+
+		if($this->default_needs_init){
+		  $this->valCache[1] = new $value();
+		}
+		else {
+		  $this->valCache[1] = $value;
+		}
+		$this->diff = psub($this->valCache[1], $this->valCache[0]); #save diff after shift
+	}
+	else { #regular fill of second element
+	  if($this->default_needs_init){
+		 $this->valCache[1] = new $value();
+	  }
+	  else {
+		$this->valCache[1] = $value;
+	  }
+	   $this->diff = psub($this->valCache[1], $this->valCache[0]); #generate diff
+	}
+  }
+  public function getDiff(){
+	return $this->diff;
+  }
+  public function getElement($index){
+	if($index > 1 || $index < 0){
+	  die(print("getElement failed, index is not 0 or 1!"));
+	}
+	else {
+	  return $this->valCache[$index];
+	}
+  }
+}
 ?>

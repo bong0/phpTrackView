@@ -8,7 +8,7 @@ $file="testfiles/Track_big.gpx"; # TODO: only for testing
 
 $parser = new GpxParser();
 $parser->setInput($file);
-#$parser->setDebug();
+$parser->setDebug();
 #echo "parsing file...\n";
 $parser->parse();
 #echo "done.\n";
