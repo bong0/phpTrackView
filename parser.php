@@ -164,6 +164,7 @@ class GpxParser {
   private function trackSegmentEnd(){
 	$this->put_avgSpeed();
 	$this->put_elevationStats();
+	$this->put_trackPointsProcessed();
 	$this->closeArray();
   }
 
