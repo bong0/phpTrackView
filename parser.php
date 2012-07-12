@@ -5,8 +5,7 @@ error_reporting(E_ALL);
 include_once("dist2points.php");
 include_once('common.php');
 
-# TODO
-# hoehenmeter
+define("OUTPUT_PRECISION", 4);
 
 class GpxParser {
   private $indentLevel; # to do proper output indentation
@@ -164,6 +163,7 @@ class GpxParser {
   }
   private function trackSegmentEnd(){
 	$this->put_avgSpeed();
+	$this->put_elevationStats();
 	$this->closeArray();
   }
 
@@ -251,7 +251,7 @@ class GpxParser {
 	  $this->elevationGain += $elevationDiff;
 	}
 	else {
-	   $this->elevationLoss += $elevationDiff;
+	   $this->elevationLoss -= $elevationDiff;
 	}
 
 	$this->state->in_ele=0; #reset flag
@@ -284,7 +284,7 @@ class GpxParser {
 
   private function put_dist($data){
 	$this->indent();
-	$this->printOut("'dist' => '".xpnd($data)."',\n");
+	$this->printOut("'dist' => '".round(xpnd($data),OUTPUT_PRECISION)."',\n");
 
 	if($data > 0){ #make sure we have a distance != 0, only then we can shift
 	  #move index [1] to [0] => like a shift register | use shift? FIXME
@@ -303,12 +303,26 @@ class GpxParser {
 	#  echo $this->distanceDelta."\n";
 	  $speed = pdiv($this->distanceDelta, $timeDelta);
 	}
-	$this->printOut("'spd' => '".xpnd($speed)."',\n");
+	$this->printOut("'spd' => '".round(xpnd($speed),OUTPUT_PRECISION)."',\n");
 	$this->cumulatedSpeed += xpnd($speed);
   }
 
   private function put_avgSpeed(){
-	 $this->printOut("'avgSpd' => '".pdiv($this->cumulatedSpeed, $this->trackPointsProcessed)."',\n");
+	$this->indent();
+	$avgSpd = pdiv($this->cumulatedSpeed, $this->trackPointsProcessed);
+	$this->printOut("'avgSpd' => '".round($avgSpd,OUTPUT_PRECISION)."',\n");
+  }
+
+  private function put_elevationStats(){
+	$this->indent();
+	$this->printOut("'eleGain' => '".round($this->elevationGain,OUTPUT_PRECISION)."',\n");
+	$this->indent();
+	$this->printOut("'eleLoss' => '".round($this->elevationLoss,OUTPUT_PRECISION)."',\n");
+  }
+
+  private function put_trackPointsProcessed(){
+	$this->indent();
+	$this->printOut("'wptproc' => '".round($this->trackPointsProcessed, OUTPUT_PRECISION)."',\n");
   }
 
   function onData($parser, $data){
