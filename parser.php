@@ -16,6 +16,7 @@ class GpxParser {
   private $output; #holds generated output
   private $debug; #flag if debugging is enabled
   private $minify; #flag is minified output is on (yes by default)
+  private $inputBzip2; #flag indicating wheter the input file is compressed using bz2
 
   private $curTrackName; # trackname needs to be built together over multiple function calls
 
@@ -38,6 +39,7 @@ class GpxParser {
 	$this->minify = 1;
 	$this->indentLevel = 0;
 	$this->state = new ParserState();
+	$this->inputBzip2 = false;
 	$this->curTrackName = "";
 	$this->locationCache = array( new Location(), new Location() );
 	$this->distanceDelta = 0;
@@ -59,7 +61,15 @@ class GpxParser {
   }
   # public interfaces
   public function setInput($inputFile){
-	if (!($fp = fopen($inputFile, "r"))) {
+	$ext = pathinfo($inputFile)['extension'];
+	if($ext === "bz2" || $ext === "bzip2" || $this->inputBzip2){
+	  $this->inputBzip2 = true;
+	  $fp = bzopen($inputFile, "r");
+	}
+	else {
+	  $fp = fopen($inputFile, "r");
+	}
+	if(!$fp){
 	  die("could not open GPX input"); #bail out on error reading file
 	}
 	$this->inputFile = $fp; #copy file descriptor if successful
@@ -68,6 +78,10 @@ class GpxParser {
   public function setDebug(){
 	$this->debug = 1;
 	$this->minify = 0;
+	return;
+  }
+  public function setBz2(){
+	$this->inputBzip2 = true;
 	return;
   }
 
@@ -82,17 +96,17 @@ class GpxParser {
 	#register handlers
 	xml_set_element_handler($this->xmlp, "GpxParser::onStartTag", "GpxParser::onEndTag"); # register start end end tag handlers for our root ("trk")
 	xml_set_character_data_handler ($this->xmlp , "GpxParser::onData"); # register data handler (content between ">","<")
-
-	rewind($this->inputFile);
-	while ($data = fread($this->inputFile, $bufsize)) {
-	  #$data = mb_convert_encoding($data, "ISO-8859-1", "UTF-8");
+	
+	while ($data = $this->iRead($this->inputFile, $bufsize)) {
 	  if (!xml_parse($this->xmlp, $data, feof($this->inputFile))) {
 		  die(sprintf("XML error: %s at line %d",
 					  xml_error_string(xml_get_error_code($this->xmlp)),
 					  xml_get_current_line_number($this->xmlp)));
 	  }
 	}
+
 	xml_parser_free($this->xmlp);
+	$this->iClose($this->inputFile);
   }
 
   public function getResult(){
@@ -374,6 +388,18 @@ class GpxParser {
 	else if($this->state->in_name) $this->put_trackname($data);
   }
 
+  private function iRead($filename, $mode){ #wrapper for fread which considers compressed files
+	if($this->inputBzip2)
+	  return bzread($filename, $mode);
+	else
+	  return fread($filename, $mode);
+  }
+  private function iClose(){
+	if($this->inputBzip2)
+	  return bzclose($this->inputFile);
+	else
+	  return bzclose($this->inputFile);
+  }
  # private function getTZ($date){
 #	$pattern = '/[A-Z+-]+[0-9:]?[0-9]?$/';
 #	preg_match($pattern, $date, $matches, PREG_OFFSET_CAPTURE);

@@ -4,7 +4,7 @@
 include_once("parser.php");
 $DEBUG = 0;
 
-$file="testfiles/Altkönigteile.gpx"; # TODO: only for testing
+$file="testfiles/Altkönigteile.gpx.bz2"; # TODO: only for testing
 
 $parser = new GpxParser();
 $parser->setInput($file);
