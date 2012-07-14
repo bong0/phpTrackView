@@ -5,7 +5,7 @@
 class HomeController {
 	public function handleRequest() {
 		
-		// Select all countries:
+		// fetch all tracks:
 		$tracks = Track::find();
 		
 		render('home', array(
