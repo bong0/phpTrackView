@@ -2,7 +2,7 @@
 
 class Track extends Model {
 
-	protected	$id;
+	public		$id;
 	public		$title;
 	public		$filename;
 	public		$created;
@@ -34,8 +34,8 @@ class Track extends Model {
 		global $db;
 		$conditions = array();
 		if (!empty($arr)) {
-			if ($arr['id'])		$conditions[] = 'id=:id';
-			if ($arr['title'])	$conditions[] = 'title=:title';
+			if (isset($arr['id']))		$conditions[] = 'id=:id';
+			if (isset($arr['title']))	$conditions[] = 'title=:title';
 		}
 //		throw new Exception('Unsupported property!');
 		$where = '';

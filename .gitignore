@@ -3,4 +3,6 @@
 *.out
 *~
 *.bak
+*.swp
 testfiles/*
+.DS_Store
