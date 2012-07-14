@@ -156,7 +156,7 @@ class GpxParser {
   }
   private function trackSegmentBegin(){
 	$this->output[] = array(); #append new, empty array
-	$this->curTrkSeg = $this->output[end($this->output)]; #set current track segment 
+	$this->curTrkSeg = &$this->output[count($this->output)-1]; #set current track segment 
 	$this->distance = 0; #reset distance
   }
   private function trackSegmentEnd(){
@@ -171,7 +171,7 @@ class GpxParser {
   # handlers for each point of a track
   private function begin_newPoint() {
 	$this->curTrkSeg[] = array(); #open new array for point data
-	$this->curPoint = $this->curTrkSeg[end($this->curTrkSeg)]; #set current point
+	$this->curPoint = &$this->curTrkSeg[count($this->curTrkSeg)-1]; #set current point
   } # open new array
   private function end_newPoint() {
 	  if($this->locationCache[1]->getLatitude()){ # calculate distance as soon as we have parsed > 1 waypoint
@@ -328,30 +328,30 @@ class GpxParser {
   private function put_avgSpeed(){
 	$avgSpd = pdiv($this->cumulatedSpeed, $this->trackPointsProcessed);
 	if($avgSpd > 0){
-	  $this->curPoint['avgSpd'] = round($avgSpd,OUTPUT_PRECISION);
+	  $this->curTrkSeg['avgSpd'] = round($avgSpd,OUTPUT_PRECISION);
 	}
   }
 
   private function put_elevationStats(){
-	$this->curPoint['eleGain'] = round($this->elevationGain,OUTPUT_PRECISION);
-	$this->curPoint['eleLoss'] = round($this->elevationLoss,OUTPUT_PRECISION);
+	$this->curTrkSeg['eleGain'] = round($this->elevationGain,OUTPUT_PRECISION);
+	$this->curTrkSeg['eleLoss'] = round($this->elevationLoss,OUTPUT_PRECISION);
   }
 
   private function put_trackPointsProcessed(){
-	$this->curPoint['wptproc'] = round($this->trackPointsProcessed, OUTPUT_PRECISION);
+	$this->curTrkSeg['wptproc'] = round($this->trackPointsProcessed, OUTPUT_PRECISION);
   }
 
   private function put_durationStats(){
-	$this->curPoint['durationVpos'] = gmdate("H:i:s", $this->duration['vPos']);
-	$this->curPoint['durationVall'] = gmdate("H:i:s", $this->duration['vAll']);
+	$this->curTrkSeg['durationVpos'] = gmdate("H:i:s", $this->duration['vPos']);
+	$this->curTrkSeg['durationVall'] = gmdate("H:i:s", $this->duration['vAll']);
   }
   
   private function put_avgCad(){
-	$this->curPoint['cadAvg'] = round(pdiv($this->cad_avg, $this->trackPointsProcessed),OUTPUT_PRECISION);
+	$this->curTrkSeg['cadAvg'] = round(pdiv($this->cad_avg, $this->trackPointsProcessed),OUTPUT_PRECISION);
   }
 
   private function put_avgHr(){
-	$this->curPoint['hrAvg'] = round(pdiv($this->hr_avg, $this->trackPointsProcessed),OUTPUT_PRECISION);
+	$this->curTrkSeg['hrAvg'] = round(pdiv($this->hr_avg, $this->trackPointsProcessed),OUTPUT_PRECISION);
   }
 
   private function onData($parser, $data){
@@ -383,8 +383,8 @@ class GpxParser {
 
 	  if(substr())
 	}
-  }
-}*/
+  }*/
+}
 
 class ParserState {
   public $in_trk,

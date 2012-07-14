@@ -27,6 +27,13 @@ class Database extends PDO {
 	}
 
 	function insert($table, $fields, $data) {
+		if(DB_TYPE === 'sqlite'){
+			array_walk($fields, function(&$value, $key){
+				if($value === 'NOW()'){
+					$value = 'datetime()';
+				}
+			});
+		}
 		$sql = 'INSERT INTO ' . DB_TABLE_TRACKS . ' (' . join(', ', array_keys($fields)) . ')'
 				. ' VALUES (' . join(', ', $fields) . ')';
 

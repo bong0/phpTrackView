@@ -6,3 +6,4 @@
   * return array from parser instead of string
   * heart rate only when cad != 0 (in movement)
   * heart rate during non-movement
+  * throw exceptions in parser.php
