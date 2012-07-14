@@ -29,6 +29,8 @@ class GpxParser {
   private $currentSpeed; #hence the name
   private $cumulatedSpeed; #an addition of all speeds in one track-segment
   private $duration; #holds array of track durations (stops in- and excluded)
+  private $cad_avg; #average cadence
+  private $hr_avg; #average heart rate
   
   public function __construct($inputFile=null,$debugging=0){
 	if($debugging) $this->debug=1;
@@ -49,6 +51,7 @@ class GpxParser {
 	$this->currentSpeed = 0;
 	$this->cumulatedSpeed = 0;
 	$this->duration = array('vPos'=>0, 'vAll'=>0);
+	$this->cad_avg = 0;
 	$this->timezone = "UTC";
 	date_default_timezone_set($this->timezone); #set timezone
 	$this->xmlp = null; #inited later in parse() when encoding is known
@@ -111,7 +114,10 @@ class GpxParser {
 	return $this->output;
   }
 
-  private function printOut($str){
+  private function printOut($str, $disable_indent=false){
+	if(!$disable_indent){
+	 $this->indent();
+	}
 	if($this->minify){
 	  $toReplace = array("\n","\t","\r\n"," ");
 	  $replacement = "";
@@ -154,24 +160,30 @@ class GpxParser {
 
   # internal output helpers
   private function indent($direction=""){ # give current indent level to stdout, raise or lower it
-	$this->indentLevel;
-	if($direction=="-") $this->indentLevel--;
-	for($i=0; $i < $this->indentLevel; $i++) $this->printOut("\t");
-	if($direction=="+") $this->indentLevel++;
+	if($direction=="-"){
+	  $this->indentLevel--;
+	  return;
+	}
+	else if($direction=="+"){
+	  $this->indentLevel++;
+	  return;
+	}
+	for($i=0; $i < $this->indentLevel; $i++) $this->printOut("\t", $disable_indent=true); #disable indent to avoid recursion
   }
   private function openArray($prefix=""){
-	$this->indent("+");
 	if($prefix){
 	  $this->printOut($prefix);
 	}
 	$this->printOut("array(\n");
+	$this->indent("+"); #only setting indent level
   }
   private function closeArray($isSubArray=1){ #flag to indicate if array is part of another array or not
-	$this->indent("-");
+	$this->indent("-"); #only setting indent level
 	if($isSubArray)
 		$this->printOut("),\n");
 	else
 	  $this->printOut(");\n");
+	  
   }
 
   # root(track)-tag handlers
@@ -190,7 +202,10 @@ class GpxParser {
   private function trackSegmentEnd(){
 	$this->put_avgSpeed();
 	$this->put_elevationStats();
+	$this->put_durationStats();
 	$this->put_trackPointsProcessed();
+	$this->put_avgCad();
+	$this->put_avgHr();
 	$this->closeArray();
   }
 
@@ -215,7 +230,6 @@ class GpxParser {
 	  return;
 	}
 	else if(!isset($data) && $tagEnd){ #reset flag only on request, not automatically like in any other put_ func
-	  $this->indent();
 	  $this->printOut("'name' => '".$this->curTrackName."',\n");
 	  $this->curTrackName = ""; #flush
 	  $this->state->in_name=0;
@@ -234,7 +248,6 @@ class GpxParser {
 	#date_default_timezone_set($this->getTZ($data)); #retreive timezone identifier from ISO8601 string
 	$timestamp = strtotime($data);
 
-	$this->indent();
 	$this->printOut("'ts' => '".$timestamp."',\n");
 	$this->timeCache->push($timestamp); #save to cache
 
@@ -250,7 +263,6 @@ class GpxParser {
 	return;
   }
   private function put_lat($data=null){
-	$this->indent();
 	$this->printOut("'lat' => '".$data."',\n");
 
 	if($this->locationCache[0]->getLatitude() > 0){ #if slot [0] is filled, put data to [1]
@@ -264,7 +276,6 @@ class GpxParser {
 	return;
   }
   private function put_lon($data=null){
-	$this->indent();
 	$this->printOut("'lon' => '".$data."',\n");
 
 	if($this->locationCache[0]->getLongitude() > 0){#if slot [0] is filled, put data to [1]
@@ -283,19 +294,20 @@ class GpxParser {
 	  return;
 	}
 
-	$this->indent();
 	$this->printOut("'ele' => '".$data."',\n");
 
 	$this->elevationCache->push($data); #save to cache
 	$elevationDiff = $this->elevationCache->getDiff();
-	if($this->distanceDelta<=0.001){ #only accept elevation deltas if distance delta to last point is > 1m
+	#if($this->distanceDelta<=0.001){ #only accept elevation deltas if distance delta to last point is > 1m
 	  if($elevationDiff>=0){
-		$this->elevationGain += $elevationDiff;
+		print("elevationDiff>=0 ".$elevationDiff."\n");
+		$this->elevationGain = padd($this->elevationGain, $elevationDiff);
 	  }
 	  else {
-		$this->elevationLoss -= $elevationDiff;
+		print("elevationDiff<0 ".$elevationDiff."\n");
+		$this->elevationLoss = psub($this->elevationLoss, $elevationDiff);
 	  }
-	}
+	#}
 	$this->state->in_ele=0; #reset flag
 	return;
   }
@@ -304,8 +316,10 @@ class GpxParser {
 	  $this->state->in_cad=1;
 	  return;
 	}
-
-	$this->indent();
+	
+	if($data>0){
+	  $this->cad_avg = padd($this->cad_avg, $data);
+	}
 	$this->printOut("'cad' => '".$data."',\n");
 
 	$this->state->in_cad=0; #reset flag
@@ -316,8 +330,10 @@ class GpxParser {
 	  $this->state->in_hr=true;
 	  return;
 	}
-
-	$this->indent();
+	
+	if($data > 0){
+	  $this->hr_avg = padd($this->hr_avg, $data);
+	}
 	$this->printOut("'hr' => '".$data."',\n");
 
 	$this->state->in_hr=0; #reset flag
@@ -325,7 +341,6 @@ class GpxParser {
   }
 
   private function put_dist($data){
-	$this->indent();
 	$this->printOut("'dist' => '".round(xpnd($data),OUTPUT_PRECISION)."',\n");
 
 	if($data > 0){ #make sure we have a distance != 0, only then we can shift
@@ -340,11 +355,8 @@ class GpxParser {
 
 	if($this->distance > 0){
 	  $timeDelta = pdiv($this->timeCache->getDiff(), 3600); # in hours
-	 # echo $timeDelta."\n";
-	 # echo $this->distanceDelta."\n";
 	  if($timeDelta > 0){ #we can't divide through zero
 		$speed = pdiv($this->distanceDelta, $timeDelta);
-		$this->indent();
 		$this->printOut("'spd' => '".round(xpnd($speed),OUTPUT_PRECISION)."',\n");
 		$this->cumulatedSpeed += xpnd($speed);
 		$this->currentSpeed = xpnd($speed);
@@ -355,27 +367,30 @@ class GpxParser {
   private function put_avgSpeed(){
 	$avgSpd = pdiv($this->cumulatedSpeed, $this->trackPointsProcessed);
 	if($avgSpd > 0){
-	  $this->indent();
 	  $this->printOut("'avgSpd' => '".round($avgSpd,OUTPUT_PRECISION)."',\n");
 	}
   }
 
   private function put_elevationStats(){
-	$this->indent();
 	$this->printOut("'eleGain' => '".round($this->elevationGain,OUTPUT_PRECISION)."',\n");
-	$this->indent();
 	$this->printOut("'eleLoss' => '".round($this->elevationLoss,OUTPUT_PRECISION)."',\n");
   }
 
   private function put_trackPointsProcessed(){
-	$this->indent();
 	$this->printOut("'wptproc' => '".round($this->trackPointsProcessed, OUTPUT_PRECISION)."',\n");
   }
 
   private function put_durationStats(){
-	$this->indent();
-	$this->printOut("'durationVpos' => '".gmdate("H:i:s", $duration['vPos'])."',\n");
-	$this->printOut("'durationVall' => '".gmdate("H:i:s", $duradion['vAll'])."',\n");
+	$this->printOut("'durationVpos' => '".gmdate("H:i:s", $this->duration['vPos'])."',\n");
+	$this->printOut("'durationVall' => '".gmdate("H:i:s", $this->duration['vAll'])."',\n");
+  }
+  
+  private function put_avgCad(){
+	$this->printOut("'cadAvg' => '".round(pdiv($this->cad_avg, $this->trackPointsProcessed),OUTPUT_PRECISION)."',\n");
+  }
+
+  private function put_avgHr(){
+	$this->printOut("'hrAvg' => '".round(pdiv($this->hr_avg, $this->trackPointsProcessed),OUTPUT_PRECISION)."',\n");
   }
 
   private function onData($parser, $data){
@@ -415,7 +430,7 @@ class ParserState {
 		 $in_trkseg,
 		 $in_time,
 		 $in_ele,
-		 $in_cad,
+		 $in_cad, #cadence
 		 $in_hr,
 		 $in_name;
   public function  __construct(){
