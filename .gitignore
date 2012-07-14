@@ -1,9 +1,9 @@
 *~
-*.gpx
+*.gpx*
+*.sqlite
 *.out
 *~
 *.bak
 *.swp
 testfiles/*
 .DS_Store
-files/*
