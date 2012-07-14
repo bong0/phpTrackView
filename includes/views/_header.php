@@ -2,8 +2,8 @@
 <html>
 	<head>
 		<title><?php echo formatTitle($title)?></title> 
-		<link href="bootstrap/css/bootstrap.css" rel="stylesheet">
-		<link href="css/style.css" rel="stylesheet">
+		<link href="/bootstrap/css/bootstrap.css" rel="stylesheet">
+		<link href="/css/style.css" rel="stylesheet">
 	</head>
 	<body>
 <!--

@@ -7,10 +7,16 @@ error_reporting(E_ALL);
 
 /* =========== Database Configuration ========== */
 
+/*
+define('DB_TYPE',   'mysql');
 define('DB_HOST',   'localhost');
 define('DB_USER',   'phpTrackView');
 define('DB_PASS',   'phpTrackView');
 define('DB_NAME',   'phpTrackView');
+ */
+
+define('DB_TYPE',   'sqlite');
+define('DB_NAME',   'files/phpTrackView.sqlite');
 define('DB_PREFIX', 'ptv_');
 
 define('DB_TABLE_TRACKS',	DB_PREFIX . 'tracks');

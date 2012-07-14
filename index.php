@@ -9,7 +9,7 @@ try {
 
 	switch (true) {
 		case $action == 'upload':	$c = new UploadController();	break;
-		case isset($_GET['track']):	$c = new TrackController();		break;
+		case $action == 'track':	$c = new TrackController();		break;
 		case empty($_GET):			$c = new HomeController();		break;
 		default:					throw new Exception('Wrong page!');
 	}

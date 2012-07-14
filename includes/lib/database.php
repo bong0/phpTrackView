@@ -7,12 +7,22 @@
 
 class Database extends PDO {
 	function __construct() {
-        @parent::__construct(
-			sprintf('mysql:host=%1$s;dbname=%2$s;charset=UTF-8', DB_HOST, DB_NAME),
-			DB_USER,
-			DB_PASS
-		);
-		$this->query('SET NAMES ´utf8´');
+		switch (DB_TYPE) {
+			case 'mysql':
+				@parent::__construct(
+					sprintf('mysql:host=%1$s;dbname=%2$s;charset=UTF-8', DB_HOST, DB_NAME),
+					DB_USER,
+					DB_PASS
+				);
+				$this->query('SET NAMES ´utf8´');
+				break;
+			case 'sqlite':
+				@parent::__construct(
+					sprintf('sqlite:%1$s', DB_NAME)
+				);
+				break;
+			default:	throw new Exception(sprintf('Unknown database type %s', DB_TYPE));
+		}
 		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	}
 
