@@ -2,9 +2,6 @@
 # Tested with PHP v5.4.4
 error_reporting(E_ALL);
 
-include_once("dist2points.php");
-include_once('common.php');
-
 define("OUTPUT_PRECISION", 4);
 
 class GpxParser {

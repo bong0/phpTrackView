@@ -1,5 +1,4 @@
 <?php
-include_once('./common.php');
 
 function getDistance($latitude1, $longitude1, $latitude2, $longitude2) {  
     $earth_radius = 6371.8; # FIXME not precise 
