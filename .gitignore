@@ -6,3 +6,4 @@
 *.swp
 testfiles/*
 .DS_Store
+files/*
