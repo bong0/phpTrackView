@@ -58,7 +58,8 @@ class GpxParser {
   }
   # public interfaces
   public function setInput($inputFile){
-	$ext = pathinfo($inputFile)['extension'];
+	$ext = pathinfo($inputFile);
+	$ext = $ext['extension'];
 	if($ext === "bz2" || $ext === "bzip2" || $this->inputBzip2){
 	  $this->inputBzip2 = true;
 	  $fp = bzopen($inputFile, "r");
