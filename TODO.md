@@ -6,3 +6,4 @@
   * heart rate only when cad != 0 (in movement)
   * heart rate during non-movement
   * throw exceptions in parser.php
+  * better unique file name creation for .gpx.gz / .gpx.bz2 files (1.gpx.gz instead of gpx1.gz)

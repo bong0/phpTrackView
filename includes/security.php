@@ -98,6 +98,7 @@ function check_filetype($filename, $mimes = null) {
 function get_allowed_mime_types() {
 	return array(
 		'gpx' => 'application/octet-stream',
+		'bz2' => 'application/x-bzip',
 		// TODO tcx
 		// TODO kml
 	);

@@ -21,8 +21,11 @@ define('DB_PREFIX', 'ptv_');
 
 define('DB_TABLE_TRACKS',	DB_PREFIX . 'tracks');
 
+/* ============ Upload Configuration ============ */
+define('UPLOAD_TYPE', function_exists('bzopen') ? 'bz' : (function_exists('gzopen') ? 'gz' : 'plain'));
 
-/* =========== Website Configuration ========== */
+
+/* ============ Website Configuration =========== */
 
 $defaultTitle = 'phpTrackView';
 $defaultFooter = date('Y') . ' phpTrackView 1.0';

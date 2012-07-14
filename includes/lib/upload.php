@@ -66,6 +66,12 @@ class Upload {
 		$orig_name	= $this->files[$idx]['orig_name'];
 		$tmp_name	= $this->files[$idx]['tmp_name'];
 
+		switch (UPLOAD_TYPE) {
+			case 'bz': $orig_name .= '.bz2'; break;
+			case 'gz': $orig_name .= '.gz'; break;
+			default  : break;
+		}
+
 		if ($this->files[$idx]['error'] != 0) return $this->files[$idx]['error'];
 
 		$filetype = check_filetype($this->files[$idx]['orig_name']);
@@ -81,7 +87,11 @@ class Upload {
 		$this->files[$idx]['filename']	= $filename;
 		$this->files[$idx]['path']		= $target;
 
-		move_uploaded_file($tmp_name, $target);
+		switch (UPLOAD_TYPE) {
+			case 'bz': $this->bzmove($tmp_name, $target); break;
+			case 'gz': $this->gzmove($tmp_name, $target); break;
+			default  : move_uploaded_file($tmp_name, $target); break;
+		}
 
 		// Set correct file permissions
 		$stat	= @stat(dirname($target));
@@ -91,6 +101,44 @@ class Upload {
 		clearstatcache();
 
 		return NULL; // indicates success - otherwise error message is returned
+	}
+
+	function bzmove($from, $to) {
+		$plain	= fopen($from, 'r');
+		$bz		= bzopen($to, 'w');
+
+		while (!feof($plain)) {
+			$data = fread($plain, 8192);
+			$len = strlen($data);
+			while ($len > 0) {
+				$written = bzwrite($bz, $data);
+				$data = substr($data, $written);
+				$len -= $written;
+			}
+		}
+
+		bzclose($bz);
+		fclose($plain);
+		unlink($from);
+	}
+
+	function gzmove($from, $to) {
+		$plain	= fopen($from, 'r');
+		$gz		= gzopen($to, 'w');
+
+		while (!feof($plain)) {
+			$data = fread($plain, 8192);
+			$len = strlen($data);
+			while ($len > 0) {
+				$written = gzwrite($gz, $data);
+				$data = substr($data, $written);
+				$len -= $written;
+			}
+		}
+
+		gzclose($gz);
+		fclose($plain);
+		unlink($from);
 	}
 
 }
