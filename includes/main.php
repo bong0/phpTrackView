@@ -1,5 +1,11 @@
 <?php
 
+function get_execution_time() {
+    static $start = null;
+	return $start === null ? $start = microtime(true) : microtime(true) - $start;
+}
+get_execution_time();
+
 /*
 	main include file
 */
