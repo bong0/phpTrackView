@@ -31,4 +31,5 @@ $defaultTitle = 'phpTrackView';
 $defaultFooter = date('Y') . ' phpTrackView 1.0';
 
 /* =========== Directory Configuration ========== */
-define('DATA_DIR', 'files');
+define('DATA_DIR',	'files');
+define('CACHE_DIR',	'cache');

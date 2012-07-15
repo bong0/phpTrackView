@@ -14,12 +14,14 @@ class TrackController {
 		if (empty($track)) throw new Exception(sprintf('Could not find track %s', $track));
 		$track = array_shift($track);
 
+		/*
 		$parser = new GpxParser();
 		$parser->setInput(DATA_DIR . '/' . $track->filename);
 //		$parser->setDebug();
 		$parser->parse();
 		$data = $parser->getResult();
-
+		 */
+		$data = $track->getJSON();
 		
 		render('track', array(
 			'title'		=> $track->title,

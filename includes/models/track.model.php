@@ -28,6 +28,20 @@ class Track extends Model {
 		);
 		
 	}
+
+	public function getJSON() {
+		$cache_file	= CACHE_DIR . '/' . $this->filename . '.json';
+		if (is_readable($cache_file)) return file_get_contents($cache_file);
+
+		$gpx_file	= DATA_DIR . '/' . $this->filename;
+		$parser = new GpxParser();
+		$parser->setInput(DATA_DIR . '/' . $this->filename);
+		$parser->parse();
+		$json = json_encode($parser->getResult());
+		file_put_contents($cache_file, $json);
+		// TODO set permissions
+		return $json;
+	}
 	
 	// returns an array with Track objects
 	public static function find($arr = NULL) {
