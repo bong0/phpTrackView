@@ -12,34 +12,22 @@ class GpxParser {
   private $output; #holds generated output in array form
 	private $curTrkSeg; #holds currently processed trackSegment
 	private $curPoint; #holds currently processed trackpoint
+	private $trkInfo; #contains metadata of current trackSegment
   private $inputFormat; #string indicating wheter the input file is compressed or not
 
   private $procData; #array which holds read values and counters for calculations 
   # containers for data used by speed, distance and elevation gain/loss
-//   private $locationCache; #holds the two last locations processed
-//   private $distanceDelta; # holds the delta of the last two trackpoints in km
-//   private $distance; #holds the cumulated distance between the waypoints of a track segment
-//   private $elevationCache; #holds the last two elevation values
-//   private $elevationGain; #holds the cumulated elevation gain in meters
-//   private $elevationLoss; #holds the cumulated elevation loss in meters
-//   private $timeCache; # holds the timestamps of the last two trackpoints in seconds
-//   private $trackPointsProcessed; #number of processed trackpoints (for averaging calcs)
-//   private $currentSpeed; #hence the name
-//   private $cumulatedSpeed; #an addition of all speeds in one track-segment
-//   private $duration; #holds array of track durations (stops in- and excluded)
-//   private $cad_avg; #average cadence
-//   private $hr_avg; #average heart rate
   
   public function __construct($inputFile=null){
+	echo "ran at ".gmdate("H:i:s", time())."\n";
 	$this->output = null; #is filled later
+	$this->trkInfo = null;
 	$this->state = new ParserState();
 	$this->intputFormat = 'plain';
 	$this->timezone = 'UTC';
 	date_default_timezone_set($this->timezone); #set timezone
 
 	$this->procData = array(
-		#'curTrkSeg' => null, # the currently processed tracksegment
-		#'curPoint' => null, # the currently processed trackpoint
 		'curTrackName' => '', # trackname needs to be built together over multiple function calls
 		'locationCache' => array( new Location(), new Location() ),
 		'distanceDelta' => 0,
@@ -121,39 +109,47 @@ class GpxParser {
 	else if($name === "ELE" && $this->state->in_trk) $this->put_ele(); #elevation in m
 
 	else if($name === "TRKPT" && $this->state->in_trk){
-	  $this->begin_newPoint();
-	  foreach($attrs as $key => $value){ # loop through attributes of "trkpt"-tag 
+	  foreach($attrs as $key => $value){ # loop through attributes of "trkpt"-tag
 		if($key === "LAT" && $this->state->in_trk) $this->put_lat($value); #latitude
 		if($key === "LON" && $this->state->in_trk) $this->put_lon($value); #longitude
 	  }
 	}
 
 	else if($name === "GPXTPX:HR") $this->put_hr();  #heart-rate (garmin specific, TrackPointExtension)
-	else if($name === "GPXTPX:CAD") $this->put_cad();  #step frequency ?  (garmin specific, TrackPointExtension)
+	else if($name === "GPXTPX:CAD") $this->put_cad();  #step frequency (garmin specific, TrackPointExtension)
   }
 
   private function onEndTag($parser, $name) {
 	if($name === "TRK") $this->trackEnd(); # close track, finish parsing
 	else if($name === "TRKSEG") $this->trackSegmentEnd(); #close track segment
 	else if($name === "TRKPT") $this->end_newPoint(); # end point
-	else if($name === "NAME") $this->put_trackname($data=null, $endTag=true); # finish trackname
+	else if($name === "NAME") $this->state->in_name = 0; # unset trackname flag but do not push to info yet
 	#all other closing functions are omitted, we unset the $in_* flags after having read the >data<
   }
 
   # root(track)-tag handlers
   private function trackBegin(){
 	$this->state->in_trk = 1;
-	$this->output=array();
+	$this->output = array();
   }
   private function trackEnd(){
 	$this->state->in_trk = 0;
   }
   private function trackSegmentBegin(){
+	end($this->output); #jmp to end
 	$this->output[] = array(); #append new, empty array for tracksegment
-	$this->curTrkSeg = &$this->output[count($this->output)-1]; #set current track segment
+	end($this->output); #jmp to end
+	$this->curTrkSeg = &$this->output[key($this->output)]; #set current track segment
+
 	$this->procData['totalDistance'] = 0; #reset distance
+	$this->procData['cumulatedSpeed'] = 0;
   }
   private function trackSegmentEnd(){
+	end($this->curTrkSeg);
+	$this->curTrkSeg['info'] = array(); #(re)init info array for metadata
+	$this->trkInfo = &$this->curTrkSeg['info'];
+
+	$this->put_trackname($data=null, $endTag=true);
 	$this->put_avgSpeed();
 	
 	if($this->procData['elevationGain'] > 0 || $this->procData['elevationLoss'] > 0){
@@ -173,8 +169,11 @@ class GpxParser {
 
   # handlers for each point of a track
   private function begin_newPoint() {
-	$this->curTrkSeg[] = array(); #open new array for point data
-	$this->curPoint = &$this->curTrkSeg[count($this->curTrkSeg)-1]; #set current point
+	echo "begin_newPoint()\n";
+	end($this->curTrkSeg);
+ 	$this->curTrkSeg[] = array(); #open new array for point data
+	end($this->curTrkSeg);
+	$this->curPoint = &$this->curTrkSeg[key($this->curTrkSeg)]; #set current point
   }
   private function end_newPoint() {
 	  if($this->procData['locationCache'][1]->getLatitude()){ # calculate distance as soon as we have parsed > 1 waypoint
@@ -189,17 +188,17 @@ class GpxParser {
 
   # metadata handling
   private function put_trackname($data=null, $tagEnd=false){
-	if(!$this->state->in_name && !isset($data)){
+
+	if(!isset($data) && $tagEnd){ #reset flag only on request, not automatically like in any other put_ func
+	  $this->trkInfo['name'] = $this->procData['curTrackName'];
+	  $this->procData['curTrackName'] = ""; #flush
+	  return;
+	}
+	else if(!$this->state->in_name && !isset($data)){
 	  $this->state->in_name=1;
 	  return;
 	}
-	else if(!isset($data) && $tagEnd){ #reset flag only on request, not automatically like in any other put_ func
-	  $this->curTrkSeg['name'] = $this->procData['curTrackName'];
-	  $this->procData['curTrackName'] = ""; #flush
-	  $this->state->in_name=0;
-	  return;
-	}
-	$this->procData['curTrackName'] .= $data;
+	$this->procData['curTrackName'] .= $data; #append read data
   }
 
   # data-handlers
@@ -303,7 +302,7 @@ class GpxParser {
   }
 
   private function put_dist($data){
-	$this->procData['dist'] = round(xpnd($data),OUTPUT_PRECISION);
+	$this->curPoint['dist'] = round(xpnd($data),OUTPUT_PRECISION);
 
 	if($data > 0){ #make sure we have a distance != 0, only then we can shift
 	  #move index [1] to [0] => like a shift register | use shift? FIXME
@@ -329,30 +328,30 @@ class GpxParser {
   private function put_avgSpeed(){
 	$avgSpd = pdiv($this->procData['cumulatedSpeed'], $this->procData['trackPointsProcessed']);
 	if($avgSpd > 0){
-	  $this->curTrkSeg['avgSpd'] = round($avgSpd,OUTPUT_PRECISION);
+	  $this->trkInfo['avgSpd'] = round($avgSpd,OUTPUT_PRECISION);
 	}
   }
 
   private function put_elevationStats(){
-	$this->curTrkSeg['eleGain'] = round($this->procData['elevationGain'],OUTPUT_PRECISION);
-	$this->curTrkSeg['eleLoss'] = round($this->procData['elevationLoss'],OUTPUT_PRECISION);
+	$this->trkInfo['eleGain'] = round($this->procData['elevationGain'],OUTPUT_PRECISION);
+	$this->trkInfo['eleLoss'] = round($this->procData['elevationLoss'],OUTPUT_PRECISION);
   }
 
   private function put_trackPointsProcessed(){
-	$this->curTrkSeg['wptproc'] = $this->procData['trackPointsProcessed'];
+	$this->trkInfo['wptproc'] = $this->procData['trackPointsProcessed'];
   }
 
   private function put_durationStats(){
-	$this->curTrkSeg['durationVpos'] = gmdate("H:i:s", $this->procData['duration']['vPos']);
-	$this->curTrkSeg['durationVall'] = gmdate("H:i:s", $this->procData['duration']['vAll']);
+	$this->trkInfo['durationVpos'] = gmdate("H:i:s", $this->procData['duration']['vPos']);
+	$this->trkInfo['durationVall'] = gmdate("H:i:s", $this->procData['duration']['vAll']);
   }
   
   private function put_avgCad(){
-	$this->curTrkSeg['cadAvg'] = round(pdiv($this->procData['cad_avg'], $this->procData['trackPointsProcessed']),OUTPUT_PRECISION);
+	$this->trkInfo['cadAvg'] = round(pdiv($this->procData['cad_avg'], $this->procData['trackPointsProcessed']),OUTPUT_PRECISION);
   }
 
   private function put_avgHr(){
-	$this->curTrkSeg['hrAvg'] = round(pdiv($this->procData['hr_avg'], $this->procData['trackPointsProcessed']),OUTPUT_PRECISION);
+	$this->trkInfo['hrAvg'] = round(pdiv($this->procData['hr_avg'], $this->procData['trackPointsProcessed']),OUTPUT_PRECISION);
   }
 
   private function onData($parser, $data){
