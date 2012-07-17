@@ -1,6 +1,6 @@
 <?php
 # Tested with PHP v5.4.4
-error_reporting(E_ALL);
+error_reporting(E_ALL | E_STRICT);
 
 define("OUTPUT_PRECISION", 4);
 
@@ -109,6 +109,7 @@ class GpxParser {
 	else if($name === "ELE" && $this->state->in_trk) $this->put_ele(); #elevation in m
 
 	else if($name === "TRKPT" && $this->state->in_trk){
+	  $this->begin_newPoint();
 	  foreach($attrs as $key => $value){ # loop through attributes of "trkpt"-tag
 		if($key === "LAT" && $this->state->in_trk) $this->put_lat($value); #latitude
 		if($key === "LON" && $this->state->in_trk) $this->put_lon($value); #longitude
@@ -169,7 +170,7 @@ class GpxParser {
 
   # handlers for each point of a track
   private function begin_newPoint() {
-	echo "begin_newPoint()\n";
+	#echo "begin_newPoint()\n";
 	end($this->curTrkSeg);
  	$this->curTrkSeg[] = array(); #open new array for point data
 	end($this->curTrkSeg);
