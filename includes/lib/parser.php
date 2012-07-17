@@ -19,7 +19,6 @@ class GpxParser {
   # containers for data used by speed, distance and elevation gain/loss
   
   public function __construct($inputFile=null){
-	echo "ran at ".gmdate("H:i:s", time())."\n";
 	$this->output = null; #is filled later
 	$this->trkInfo = null;
 	$this->state = new ParserState();
@@ -170,7 +169,6 @@ class GpxParser {
 
   # handlers for each point of a track
   private function begin_newPoint() {
-	#echo "begin_newPoint()\n";
 	end($this->curTrkSeg);
  	$this->curTrkSeg[] = array(); #open new array for point data
 	end($this->curTrkSeg);
@@ -215,7 +213,7 @@ class GpxParser {
 	$this->curPoint['ts'] = $timestamp;
 	$this->procData['timeCache']->push($timestamp); #save to cache
 
-	if($this->procData['currentSpeed'] > 0){
+	if($this->procData['currentSpeed'] > 1){ #only count distance is tracker was moving significantly
 	  $this->procData['duration']['vPos'] += $this->procData['timeCache']->getDiff();
 	  $this->procData['duration']['vAll'] += $this->procData['timeCache']->getDiff();
 	}
@@ -327,10 +325,16 @@ class GpxParser {
   }
 
   private function put_avgSpeed(){
-	$avgSpd = pdiv($this->procData['cumulatedSpeed'], $this->procData['trackPointsProcessed']);
-	if($avgSpd > 0){
-	  $this->trkInfo['avgSpd'] = round($avgSpd,OUTPUT_PRECISION);
+	$avgSpdMov = pdiv($this->procData['totalDistance'], pdiv($this->procData['duration']['vPos'], 3600));
+	$avgSpdAll = pdiv($this->procData['totalDistance'], pdiv($this->procData['duration']['vAll'], 3600));
+
+	if($avgSpdMov > 0){
+	  $this->trkInfo['avgSpdMov'] = round($avgSpdMov,OUTPUT_PRECISION);
 	}
+	if($avgSpdAll > 0){
+	  $this->trkInfo['avgSpdAll'] = round($avgSpdAll,OUTPUT_PRECISION);
+	}
+
   }
 
   private function put_elevationStats(){
