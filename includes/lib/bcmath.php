@@ -1,6 +1,6 @@
 <?php
 
-define('BCMATH_PRECISION', 50);
+define('BCMATH_PRECISION', 20);
 
 #wrapper functions for bcmath operations; appending BCMATH_PRECISION to operand-list
 function ppow($op1, $op2){
