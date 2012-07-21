@@ -1,4 +1,4 @@
-==== phpTrackView ====
+### phpTrackView
 
 This project aims to develop a webapplication featuring
   * visualization of GPS-Tracks on OSM Hike&Bike, CycleMap and optionally other maps
@@ -13,7 +13,7 @@ This project aims to develop a webapplication featuring
 
 The UI is based on http://twitter.github.com/bootstrap/ .
 
-=== Testing dev version ===
+### Testing dev version
 
 You can test the project using php 5.4:
 
