@@ -8,9 +8,7 @@ if(preg_match("/.*upload.*/",$_SERVER["REQUEST_URI"])){
 else if(preg_match("/tracks\/(.*)/",$_SERVER["REQUEST_URI"], $matches)){
     $_GET['action'] = 'track';
     $_GET['track'] = $matches[1];
- #   print_r($matches);
 }
-#print_r($_GET);
 include('index.php');
 
 ?>

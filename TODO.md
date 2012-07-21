@@ -7,4 +7,5 @@
   * heart rate during non-movement
   * throw exceptions in parser.php
   * better unique file name creation for .gpx.gz / .gpx.bz2 files (1.gpx.gz instead of gpx1.gz)
-  * support for gz files in parser.php
+  * implement toarray function in TrackPoint class of parser.php, drop code for array-only curPoint
+  * switch to relative calculation of distance for each point (current to previous)
