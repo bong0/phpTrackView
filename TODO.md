@@ -3,9 +3,6 @@
     * 1,1M test.gpx
     * 96K test.gpx.gz
     * 68K test.gpx.bz2
-  * heart rate only when cad != 0 (in movement)
-  * heart rate during non-movement
-  * throw exceptions in parser.php
   * better unique file name creation for .gpx.gz / .gpx.bz2 files (1.gpx.gz instead of gpx1.gz)
   * implement toarray function in TrackPoint class of parser.php, drop code for array-only curPoint
   * switch to relative calculation of distance for each point (current to previous)

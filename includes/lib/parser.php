@@ -73,14 +73,14 @@ class GpxParser {
 	  $fp = fopen($inputFile, "r");
 	}
 	if(!$fp){
-	  die("could not open GPX input"); #bail out on error reading file
+	  throw new Exception('could not open GPX input: '.$inputFile.' of type:'.$this->inputFormat); #bail out on error reading file
 	}
 	$this->inputFile = $fp; #copy file descriptor if successful
   }
 
   public function parse($bufsize=4096){
 	if(!isset($this->inputFile)){
-	  die(print("You have to call setInput() before parsing!"));
+	  throw new Exception('You have to call setInput() prior to parsing!');
 	}
 
 	$this->xmlp = xml_parser_create(); #construct xmlparser
@@ -92,9 +92,9 @@ class GpxParser {
 	
 	while ($data = $this->iRead($this->inputFile, $bufsize)) {
 	  if (!xml_parse($this->xmlp, $data, feof($this->inputFile))) {
-		  die(sprintf("XML error: %s at line %d",
-					  xml_error_string(xml_get_error_code($this->xmlp)),
-					  xml_get_current_line_number($this->xmlp)));
+		  throw new Exception(sprintf("XML error: %s at line %d",
+							  xml_error_string(xml_get_error_code($this->xmlp)),
+							  xml_get_current_line_number($this->xmlp)));
 	  }
 	}
 
@@ -421,8 +421,8 @@ class GpxParser {
 	  return gzread($filename, $mode);
 	else
 	  return fread($filename, $mode);
-  
   }
+
   private function iClose(){
 	if($this->inputFormat === 'bz2')
 	  return bzclose($this->inputFile);
@@ -558,7 +558,7 @@ class DiffCache {
   }
   public function getElement($index){
 	if($index > 1 || $index < 0){
-	  die(print("getElement failed, index is not 0 or 1!"));
+	  throw new Exception('getElement failed, index is not 0 or 1!');
 	}
 	else {
 	  return $this->valCache[$index];
