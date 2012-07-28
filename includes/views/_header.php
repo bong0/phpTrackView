@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title><?php echo formatTitle($title)?></title> 
-		<link href="/bootstrap/css/bootstrap.css" rel="stylesheet">
+		<link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 		<link href="/css/style.css" rel="stylesheet">
 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
 		<script src="http://code.highcharts.com/stock/1.1.4/highstock.js"></script>

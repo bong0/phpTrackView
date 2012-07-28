@@ -25,5 +25,5 @@ require_once 'includes/lib/database.php';
 require_once 'includes/lib/database_bootstrap.php';
 require_once 'includes/lib/dist2points.php';
 require_once 'includes/lib/parser.php';
+require_once 'includes/lib/simplify.php';
 require_once 'includes/lib/upload.php';
-
