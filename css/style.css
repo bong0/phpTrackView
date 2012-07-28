@@ -1,5 +1,10 @@
 body { padding-top: 40px; padding-bottom: 40px; }
+.map img {
+	max-width: none;
+}
 @media (max-width: 979px) {
 body { padding-top: 0; padding-bottom: 0; }
 }
 
+#map div.olControlZoom a { background: rgba(60, 60, 60, 0.5); }
+#map div.olControlZoom a:hover { background: rgba(60, 60, 60, 0.7); }
