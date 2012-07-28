@@ -40,16 +40,19 @@ class Track extends Model {
 //		$json = json_encode($parser->getResult());
 
 		$parsed = $parser->getResult();
+//		return json_encode($parsed);
 
-		$track = &array_shift($parsed);
+		$track = array_shift($parsed);
+		$track_seg = array_shift($track);
+		unset($track);
 		while (true) {
-			if (is_array(end($track))) break;
-			array_pop($track);
+			if (is_array(end($track_seg))) break;
+			array_pop($track_seg);
 		}
-		$first = reset($track);
+		$first = reset($track_seg);
 		$first_dist = isset($first['dist']) ? $first['dist'] : FALSE;
 		$first_time = isset($first['ts'])   ? $first['ts']   : FALSE;
-		$last = end($track);
+		$last = end($track_seg);
 		$last_dist = isset($last['dist']) ? $last['dist'] : FALSE;
 		$last_time = isset($last['ts'])   ? $last['ts']   : FALSE;
 
@@ -73,7 +76,7 @@ class Track extends Model {
 		if (!$do_dist) unset($data['dist']);
 		if (!$do_time) unset($data['time']);
 		
-		while ($row = array_shift($track)) {
+		while ($row = array_shift($track_seg)) {
 			Track::setValue($data, $row, 'time', 'cad');
 			Track::setValue($data, $row, 'time', 'dist');
 			Track::setValue($data, $row, 'time', 'ele');
@@ -87,7 +90,7 @@ class Track extends Model {
 			
 		}
 		unset($parsed);
-		unset($track);
+		unset($track_seg);
 		$new_data = array();
 		Track::simplifyData($new_data, $data, 'time', 'cad');
 		Track::simplifyData($new_data, $data, 'time', 'dist');
@@ -96,59 +99,6 @@ class Track extends Model {
 		Track::simplifyData($new_data, $data, 'time', 'spd');
 		unset($data);
 		$data = $new_data;
-
-		/*
-		$width = 4000;
-
-		if ($do_dist) $interval_dist = ($last_dist - $first_dist) / ($width - 1);
-		if ($do_time) $interval_time = ($last_time - $first_time) / ($width - 1);
-		for ($i = 0; $i < $width; ++$i) {
-			$time = (int)($first_time + $interval_time * $i) * 1000;
-			$data['time']['cad' ][$i] = array($time, NULL);
-			$data['time']['dist'][$i] = array($time, NULL);
-			$data['time']['ele' ][$i] = array($time, NULL);
-			$data['time']['hr'  ][$i] = array($time, NULL);
-			$data['time']['spd' ][$i] = array($time, NULL);
-		}
-
-		while ($row = array_shift($track)) {
-			if ($do_time && isset($row['ts'])) {
-				$idx_time = round(($row['ts'] - $first_time) / $interval_time);
-				$cad = isset($row['cad']) ? (float)$row['cad'] : 0;
-				
-				Track::fillVal($data['time']['cad'], $idx_time, $cad, $time);
-				if (isset($row['dist'])) Track::fillVal($data['time']['dist'], $idx_time, $row['dist']);
-				if (isset($row['ele' ])) Track::fillVal($data['time']['ele' ], $idx_time, $row['ele' ]);
-				if (isset($row['hr'  ])) Track::fillVal($data['time']['hr'  ], $idx_time, $row['hr'  ]);
-				if (isset($row['spd' ])) Track::fillVal($data['time']['spd' ], $idx_time, $row['spd' ]);
-			}
-		}
-		*/
-		/*
-		foreach ($track as $idx => &$val) {
-			if (!is_array($val)) continue;
-			if (isset($val['dist'])) {
-				if (!isset($first_dist)) $first_dist = $val['dist'];
-				$last_dist = $val['dist'];
-				if (isset($val['cad' ])) $tmp['dist']['cad' ][(float)$val['dist']] = (float)$val['cad' ];
-				if (isset($val['ele' ])) $tmp['dist']['ele' ][(float)$val['dist']] = (float)$val['ele' ];
-				if (!empty($val['hr' ])) $tmp['dist']['hr'  ][(float)$val['dist']] = (float)$val['hr'  ];
-				if (isset($val['spd' ])) $tmp['dist']['spd' ][(float)$val['dist']] = (float)$val['spd' ];
-			}
-			if (isset($val['ts'])) {
-				if (!isset($first_time)) $first_time = $val['ts'];
-				$last_time = $val['ts'];
-				if (isset($val['cad' ])) $tmp['time']['cad' ][(int)$val['ts'  ]] = (float)$val['cad' ];
-				else 					 $tmp['time']['cad' ][(int)$val['ts'  ]] = 0);
-				if (isset($val['dist'])) $tmp['time']['dist'][(int)$val['ts'  ]] = (float)$val['dist'];
-				if (isset($val['ele' ])) $tmp['time']['ele' ][(int)$val['ts'  ]] = (float)$val['ele' ];
-				if (!empty($val['hr' ])) $tmp['time']['hr'  ][(int)$val['ts'  ]] = (float)$val['hr'  ];
-				if (isset($val['spd' ])) $tmp['time']['spd' ][(int)$val['ts'  ]] = (float)$val['spd' ];
-			}
-		}
-		$data
-
-		// */
 		$json = json_encode($data);
 		file_put_contents($cache_file, $json);
 		// TODO set permissions
